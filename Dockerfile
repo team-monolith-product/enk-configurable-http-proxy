@@ -1,4 +1,4 @@
-FROM docker.io/library/node:24-alpine3.23
+FROM docker.io/library/node:24-alpine3.23 AS dev
 # ref: https://hub.docker.com/_/node/tags?name=alpine
 
 # Set labels based on the Open Containers Initiative (OCI):
