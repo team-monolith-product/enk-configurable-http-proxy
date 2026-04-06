@@ -30,6 +30,7 @@ file_env() {
 }
 
 file_env 'CONFIGPROXY_AUTH_TOKEN'
+file_env 'ANTHROPIC_API_KEY'
 
 case "$@" in
     *"--api-ip"*)

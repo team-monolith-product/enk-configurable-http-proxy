@@ -123,6 +123,11 @@ cli
     "--serve-port <n>",
     "Target port for serve routing (default: 3000)",
     parseInt
+  )
+  .option("--anthropic-proxy-path <path>", "URL prefix for Anthropic API proxy (e.g., /anthropic). Disabled if not set.")
+  .option(
+    "--anthropic-api-url <url>",
+    "Target Anthropic API base URL (default: https://api.anthropic.com)",
   );
 
 // collects multiple flags to an object
@@ -329,6 +334,11 @@ if (!options.authToken) {
 // serve path routing
 options.servePath = args.servePath;
 options.servePort = args.servePort || 3000;
+
+// anthropic proxy routing
+options.anthropicProxyPath = args.anthropicProxyPath;
+options.anthropicApiUrl = args.anthropicApiUrl || "https://api.anthropic.com";
+options.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
 // external backend class
 options.storageBackend = args.storageBackend;
