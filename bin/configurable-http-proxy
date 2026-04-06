@@ -128,10 +128,6 @@ cli
   .option(
     "--anthropic-api-url <url>",
     "Target Anthropic API base URL (default: https://api.anthropic.com)",
-  )
-  .option(
-    "--anthropic-hub-api-url <url>",
-    "JupyterHub API URL for token validation (default: http://hub:8081/hub/api)",
   );
 
 // collects multiple flags to an object
@@ -343,7 +339,6 @@ options.servePort = args.servePort || 3000;
 options.anthropicProxyPath = args.anthropicProxyPath;
 options.anthropicApiUrl = args.anthropicApiUrl || "https://api.anthropic.com";
 options.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-options.anthropicHubApiUrl = args.anthropicHubApiUrl || "http://hub:8081/hub/api";
 
 // external backend class
 options.storageBackend = args.storageBackend;
