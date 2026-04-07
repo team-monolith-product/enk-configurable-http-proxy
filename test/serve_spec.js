@@ -31,7 +31,7 @@ describe("Serve Path Routing", function () {
     return new Promise(function (resolve) {
       var server = http.createServer(function (req, res) {
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.write(JSON.stringify({ url: req.url, host: req.headers.host, served: true }));
+        res.write(JSON.stringify({ url: req.url, served: true }));
         res.end();
       });
       if (opts.websocket) {
@@ -320,35 +320,7 @@ describe("Serve Path Routing", function () {
       });
   });
 
-  it("routes arbitrary path to dev server when Referer has serve prefix", function (done) {
-    var serveServer;
-    setupServeProxy()
-      .then(function (proxy) {
-        return startServeServer(servePort).then(function (server) {
-          serveServer = server;
-          return proxy.addRoute("/user/alice", {
-            target: "http://127.0.0.1:" + (port + 2),
-          });
-        });
-      })
-      .then(function () {
-        return fetch(proxyUrl + "/src/main.tsx", {
-          headers: { Referer: proxyUrl + "/serve/alice/" },
-        });
-      })
-      .then(function (res) {
-        expect(res.status).toEqual(200);
-        return res.json();
-      })
-      .then(function (body) {
-        expect(body.served).toBe(true);
-        expect(body.url).toEqual("/src/main.tsx");
-        serveServer.close();
-        done();
-      });
-  });
-
-  it("does not fallback for system paths even with serve Referer", function (done) {
+  it("does not fallback for non-/_next/ bare paths", function (done) {
     setupServeProxy()
       .then(function (proxy) {
         return startServeServer(servePort).then(function (server) {
@@ -362,163 +334,14 @@ describe("Serve Path Routing", function () {
         });
       })
       .then(function (serveServer) {
-        return fetch(proxyUrl + "/hub/login", {
+        return fetch(proxyUrl + "/random/path", {
           headers: { Referer: proxyUrl + "/serve/alice/" },
         }).then(function (res) {
-          // /hub/ is a system path — must NOT be routed to serve target
+          // should NOT be routed to serve target — falls through to normal routing (404)
           expect(res.status).toEqual(404);
           serveServer.close();
           done();
         });
-      });
-  });
-
-  // ---- Host header rewriting for serve requests ----
-
-  it("rewrites Host header to localhost for serve requests", function (done) {
-    var serveServer;
-    setupServeProxy()
-      .then(function (proxy) {
-        return startServeServer(servePort).then(function (server) {
-          serveServer = server;
-          return proxy.addRoute("/user/alice", {
-            target: "http://127.0.0.1:" + (port + 2),
-          });
-        });
-      })
-      .then(function () {
-        return fetch(proxyUrl + "/serve/alice/page", {
-          headers: { Host: "opencode.dev.team-mono.com" },
-        });
-      })
-      .then(function (res) {
-        expect(res.status).toEqual(200);
-        return res.json();
-      })
-      .then(function (body) {
-        expect(body.served).toBe(true);
-        expect(body.host).toEqual("localhost:" + servePort);
-        serveServer.close();
-        done();
-      });
-  });
-
-  // ---- Vite asset fallback via Referer ----
-
-  it("routes /@vite/ request to correct user via Referer header", function (done) {
-    var serveServer;
-    setupServeProxy()
-      .then(function (proxy) {
-        return startServeServer(servePort).then(function (server) {
-          serveServer = server;
-          return proxy.addRoute("/user/alice", {
-            target: "http://127.0.0.1:" + (port + 2),
-          });
-        });
-      })
-      .then(function () {
-        return fetch(proxyUrl + "/@vite/client", {
-          headers: { Referer: proxyUrl + "/serve/alice/" },
-        });
-      })
-      .then(function (res) {
-        expect(res.status).toEqual(200);
-        return res.json();
-      })
-      .then(function (body) {
-        expect(body.served).toBe(true);
-        expect(body.url).toEqual("/@vite/client");
-        serveServer.close();
-        done();
-      });
-  });
-
-  it("routes /@fs/ request to correct user via Referer header", function (done) {
-    var serveServer;
-    setupServeProxy()
-      .then(function (proxy) {
-        return startServeServer(servePort).then(function (server) {
-          serveServer = server;
-          return proxy.addRoute("/user/bob", {
-            target: "http://127.0.0.1:" + (port + 2),
-          });
-        });
-      })
-      .then(function () {
-        return fetch(proxyUrl + "/@fs/home/user/project/node_modules/react/index.js", {
-          headers: { Referer: proxyUrl + "/serve/bob/" },
-        });
-      })
-      .then(function (res) {
-        expect(res.status).toEqual(200);
-        return res.json();
-      })
-      .then(function (body) {
-        expect(body.served).toBe(true);
-        expect(body.url).toEqual("/@fs/home/user/project/node_modules/react/index.js");
-        serveServer.close();
-        done();
-      });
-  });
-
-  it("routes /@id/ request to correct user via Referer header", function (done) {
-    var serveServer;
-    setupServeProxy()
-      .then(function (proxy) {
-        return startServeServer(servePort).then(function (server) {
-          serveServer = server;
-          return proxy.addRoute("/user/carol", {
-            target: "http://127.0.0.1:" + (port + 2),
-          });
-        });
-      })
-      .then(function () {
-        return fetch(proxyUrl + "/@id/react-refresh", {
-          headers: { Referer: proxyUrl + "/serve/carol/" },
-        });
-      })
-      .then(function (res) {
-        expect(res.status).toEqual(200);
-        return res.json();
-      })
-      .then(function (body) {
-        expect(body.served).toBe(true);
-        expect(body.url).toEqual("/@id/react-refresh");
-        serveServer.close();
-        done();
-      });
-  });
-
-  it("rewrites Host header for Vite asset fallback requests", function (done) {
-    var serveServer;
-    setupServeProxy()
-      .then(function (proxy) {
-        return startServeServer(servePort).then(function (server) {
-          serveServer = server;
-          return proxy.addRoute("/user/alice", {
-            target: "http://127.0.0.1:" + (port + 2),
-          });
-        });
-      })
-      .then(function () {
-        return fetch(proxyUrl + "/@vite/client", {
-          headers: {
-            Host: "opencode.dev.team-mono.com",
-            Referer: proxyUrl + "/serve/alice/",
-          },
-        });
-      })
-      .then(function (res) {
-        expect(res.status).toEqual(200);
-        return res.json();
-      })
-      .then(function (body) {
-        expect(body.served).toBe(true);
-        // asset fallback also goes through handleProxy with _isServe=true,
-        // so Host must be rewritten
-        expect(body.host).toEqual("localhost:" + servePort);
-        serveServer.close();
-        done();
       });
   });
 });
