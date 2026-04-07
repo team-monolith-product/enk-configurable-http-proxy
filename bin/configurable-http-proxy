@@ -327,7 +327,7 @@ if (!options.authToken) {
 }
 
 // serve domain routing
-options.serveDomain = args.serveDomain || process.env.SERVE_DOMAIN;
+options.serveDomain = args.serveDomain || process.env.OPENCODE_SERVE_DOMAIN;
 options.servePort = args.servePort || 3000;
 
 // external backend class
