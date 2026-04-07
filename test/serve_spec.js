@@ -8,9 +8,10 @@ import * as util from "../lib/testutil.js";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
 
-describe("Serve Path Routing", function () {
+describe("Serve Domain Routing", function () {
   var port = 9100;
   var servePort = 9110;
+  var serveDomain = "example.com";
   var listenOptions = { port: port, ip: "127.0.0.1" };
   var proxyUrl = "http://127.0.0.1:" + port;
 
@@ -20,7 +21,7 @@ describe("Serve Path Routing", function () {
 
   function setupServeProxy(extraOptions) {
     var options = Object.assign(
-      { servePath: "/serve", servePort: servePort },
+      { serveDomain: serveDomain, servePort: servePort },
       extraOptions || {}
     );
     return util.setupProxy(listenOptions, options, []);
@@ -49,12 +50,10 @@ describe("Serve Path Routing", function () {
     });
   }
 
-  it("disabled when servePath is not set", function (done) {
+  it("disabled when serveDomain is not set", function (done) {
     util.setupProxy(listenOptions, {}, []).then(function (proxy) {
-      // add a user route so there's something to match
       proxy.addRoute("/user/alice", { target: "http://127.0.0.1:" + servePort }).then(function () {
-        fetch(proxyUrl + "/serve/alice/").then(function (res) {
-          // should 404 because serve routing is disabled
+        fetch(proxyUrl + "/", { headers: { Host: "alice.example.com" } }).then(function (res) {
           expect(res.status).toEqual(404);
           done();
         });
@@ -62,7 +61,7 @@ describe("Serve Path Routing", function () {
     });
   });
 
-  it("proxies HTTP request to serve port", function (done) {
+  it("proxies HTTP request via subdomain", function (done) {
     var serveServer;
     setupServeProxy()
       .then(function (proxy) {
@@ -74,7 +73,9 @@ describe("Serve Path Routing", function () {
         });
       })
       .then(function () {
-        return fetch(proxyUrl + "/serve/alice/index.html");
+        return fetch(proxyUrl + "/index.html", {
+          headers: { Host: "alice." + serveDomain },
+        });
       })
       .then(function (res) {
         expect(res.status).toEqual(200);
@@ -88,7 +89,7 @@ describe("Serve Path Routing", function () {
       });
   });
 
-  it("strips serve prefix from proxied URL", function (done) {
+  it("preserves full path for subdomain requests", function (done) {
     var serveServer;
     setupServeProxy()
       .then(function (proxy) {
@@ -100,7 +101,9 @@ describe("Serve Path Routing", function () {
         });
       })
       .then(function () {
-        return fetch(proxyUrl + "/serve/bob/path/to/file.js");
+        return fetch(proxyUrl + "/path/to/file.js", {
+          headers: { Host: "bob." + serveDomain },
+        });
       })
       .then(function (res) {
         return res.json();
@@ -124,7 +127,9 @@ describe("Serve Path Routing", function () {
         });
       })
       .then(function () {
-        return fetch(proxyUrl + "/serve/carol/");
+        return fetch(proxyUrl + "/", {
+          headers: { Host: "carol." + serveDomain },
+        });
       })
       .then(function (res) {
         return res.json();
@@ -136,7 +141,7 @@ describe("Serve Path Routing", function () {
       });
   });
 
-  it("proxies WebSocket to serve port", function (done) {
+  it("proxies WebSocket via subdomain", function (done) {
     setupServeProxy()
       .then(function (proxy) {
         return startServeServer(servePort, { websocket: true }).then(function (server) {
@@ -150,7 +155,9 @@ describe("Serve Path Routing", function () {
         });
       })
       .then(function (serveServer) {
-        var ws = new WebSocket("ws://127.0.0.1:" + port + "/serve/dave/ws");
+        var ws = new WebSocket("ws://127.0.0.1:" + port + "/ws", {
+          headers: { Host: "dave." + serveDomain },
+        });
         ws.on("error", function () {
           expect("error").toEqual("ok");
           serveServer.close();
@@ -177,7 +184,9 @@ describe("Serve Path Routing", function () {
 
   it("returns 404 for unknown user", function (done) {
     setupServeProxy().then(function () {
-      fetch(proxyUrl + "/serve/unknown-user/").then(function (res) {
+      fetch(proxyUrl + "/", {
+        headers: { Host: "unknown-user." + serveDomain },
+      }).then(function (res) {
         expect(res.status).toEqual(404);
         done();
       });
@@ -187,13 +196,14 @@ describe("Serve Path Routing", function () {
   it("returns 503 when dev server is not running", function (done) {
     setupServeProxy()
       .then(function (proxy) {
-        // add user route, but don't start a serve server on servePort
         return proxy.addRoute("/user/eve", {
           target: "http://127.0.0.1:" + (port + 2),
         });
       })
       .then(function () {
-        fetch(proxyUrl + "/serve/eve/").then(function (res) {
+        fetch(proxyUrl + "/", {
+          headers: { Host: "eve." + serveDomain },
+        }).then(function (res) {
           expect(res.status).toEqual(503);
           done();
         });
@@ -203,7 +213,6 @@ describe("Serve Path Routing", function () {
   it("does not affect normal /user/ routing", function (done) {
     setupServeProxy()
       .then(function (proxy) {
-        // add a real target on the user route port
         return util.addTarget(proxy, "/user/frank", port + 2, false);
       })
       .then(function () {
@@ -216,6 +225,94 @@ describe("Serve Path Routing", function () {
       .then(function (body) {
         expect(body.path).toEqual("/user/frank");
         expect(body.url).toEqual("/user/frank/test");
+        done();
+      });
+  });
+
+  it("ignores subdomain with dots (nested subdomain)", function (done) {
+    setupServeProxy()
+      .then(function (proxy) {
+        return proxy.addRoute("/user/alice", {
+          target: "http://127.0.0.1:" + servePort,
+        });
+      })
+      .then(function () {
+        return fetch(proxyUrl + "/", {
+          headers: { Host: "sub.alice." + serveDomain },
+        });
+      })
+      .then(function (res) {
+        expect(res.status).toEqual(404);
+        done();
+      });
+  });
+
+  it("responds to CORS preflight", function (done) {
+    setupServeProxy().then(function () {
+      fetch(proxyUrl + "/", {
+        method: "OPTIONS",
+        headers: {
+          Host: "alice." + serveDomain,
+          "Access-Control-Request-Method": "GET",
+        },
+      }).then(function (res) {
+        expect(res.status).toEqual(204);
+        expect(res.headers.get("access-control-allow-origin")).toEqual("*");
+        expect(res.headers.get("access-control-allow-methods")).toContain("GET");
+        done();
+      });
+    });
+  });
+
+  it("adds CORS header to proxied response", function (done) {
+    var serveServer;
+    setupServeProxy()
+      .then(function (proxy) {
+        return startServeServer(servePort).then(function (server) {
+          serveServer = server;
+          return proxy.addRoute("/user/alice", {
+            target: "http://127.0.0.1:" + (port + 2),
+          });
+        });
+      })
+      .then(function () {
+        return fetch(proxyUrl + "/index.html", {
+          headers: { Host: "alice." + serveDomain },
+        });
+      })
+      .then(function (res) {
+        expect(res.status).toEqual(200);
+        expect(res.headers.get("access-control-allow-origin")).toEqual("*");
+        serveServer.close();
+        done();
+      });
+  });
+
+  it("uses custom serve port", function (done) {
+    var customPort = 9120;
+    var serveServer;
+    util
+      .setupProxy(listenOptions, { serveDomain: serveDomain, servePort: customPort }, [])
+      .then(function (proxy) {
+        return startServeServer(customPort).then(function (server) {
+          serveServer = server;
+          return proxy.addRoute("/user/alice", {
+            target: "http://127.0.0.1:" + (port + 2),
+          });
+        });
+      })
+      .then(function () {
+        return fetch(proxyUrl + "/", {
+          headers: { Host: "alice." + serveDomain },
+        });
+      })
+      .then(function (res) {
+        expect(res.status).toEqual(200);
+        return res.json();
+      })
+      .then(function (body) {
+        expect(body.served).toBe(true);
+        serveServer.close();
         done();
       });
   });
@@ -234,7 +331,6 @@ describe("Serve Path Routing", function () {
         });
       })
       .then(function () {
-        // shift last_activity into the past
         return proxy._routes.update("/user/grace", {
           last_activity: new Date(Date.now() - 60000),
         });
@@ -244,9 +340,10 @@ describe("Serve Path Routing", function () {
       })
       .then(function (routeBefore) {
         var activityBefore = routeBefore.last_activity;
-        return fetch(proxyUrl + "/serve/grace/page.html").then(function (res) {
+        return fetch(proxyUrl + "/page.html", {
+          headers: { Host: "grace." + serveDomain },
+        }).then(function (res) {
           expect(res.status).toEqual(200);
-          // wait briefly for async activity update
           return new Promise(function (resolve) {
             setTimeout(resolve, 200);
           }).then(function () {
