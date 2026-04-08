@@ -248,20 +248,44 @@ describe("Serve Domain Routing", function () {
   });
 
   it("responds to CORS preflight", function (done) {
-    setupServeProxy().then(function () {
-      fetch(proxyUrl + "/", {
-        method: "OPTIONS",
-        headers: {
-          Host: "alice." + serveDomain,
-          "Access-Control-Request-Method": "GET",
-        },
-      }).then(function (res) {
+    setupServeProxy()
+      .then(function (proxy) {
+        return proxy.addRoute("/user/alice", {
+          target: "http://127.0.0.1:" + (port + 2),
+        });
+      })
+      .then(function () {
+        return fetch(proxyUrl + "/", {
+          method: "OPTIONS",
+          headers: {
+            Host: "alice." + serveDomain,
+            "Access-Control-Request-Method": "GET",
+          },
+        });
+      })
+      .then(function (res) {
         expect(res.status).toEqual(204);
         expect(res.headers.get("access-control-allow-origin")).toEqual("*");
         expect(res.headers.get("access-control-allow-methods")).toContain("GET");
         done();
       });
-    });
+  });
+
+  it("falls through CORS preflight when subdomain has no user route", function (done) {
+    setupServeProxy()
+      .then(function () {
+        return fetch(proxyUrl + "/", {
+          method: "OPTIONS",
+          headers: {
+            Host: "alice." + serveDomain,
+            "Access-Control-Request-Method": "GET",
+          },
+        });
+      })
+      .then(function (res) {
+        expect(res.status).toEqual(404);
+        done();
+      });
   });
 
   it("adds CORS header to proxied response", function (done) {
