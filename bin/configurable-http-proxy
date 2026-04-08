@@ -118,7 +118,7 @@ cli
     "Set timeout (in milliseconds) for Keep-Alive connections",
     parseInt
   )
-  .option("--serve-path <path>", "URL prefix for serve routing (e.g., /serve). Disabled if not set.")
+  .option("--serve-domain <domain>", "Base domain for subdomain serve routing (e.g., dev.jitda.io). Disabled if not set.")
   .option(
     "--serve-port <n>",
     "Target port for serve routing (default: 3000)",
@@ -331,8 +331,8 @@ if (!options.authToken) {
   log.warn("REST API is not authenticated.");
 }
 
-// serve path routing
-options.servePath = args.servePath;
+// serve domain routing
+options.serveDomain = args.serveDomain || process.env.OPENCODE_SERVE_DOMAIN;
 options.servePort = args.servePort || 3000;
 
 // anthropic proxy routing
