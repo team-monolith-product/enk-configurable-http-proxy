@@ -32,6 +32,8 @@ functionality to [JupyterHub] deployments.
   - [Setting the path for custom error pages](#setting-the-path-for-custom-error-pages)
   - [Setting a target for custom error handling](#setting-a-target-for-custom-error-handling)
 - [Host-based routing](#host-based-routing)
+- [Custom storage backends](#custom-storage-backends)
+  - [Built-in Redis backend](#built-in-redis-backend)
 - [Troubleshooting](#troubleshooting)
 
 ## Install
@@ -356,6 +358,43 @@ the hostname were the first part of the URL path, e.g.:
   "/otherdomain.biz": "http://10.0.1.4:5555",
 }
 ```
+
+[**Return to top**][]
+
+## Custom storage backends
+
+The routing table is stored in memory by default (`MemoryStore`), so routes are lost when the proxy restarts. CHP supports loading an alternative storage class via the `--storage-backend` CLI flag:
+
+```bash
+configurable-http-proxy --storage-backend ./path/to/my-store.cjs
+```
+
+The class is loaded with `require()` and instantiated with the full options object. It must implement `getTarget`, `getAll`, `add`, `update`, `remove`, and `get` (returning Promises).
+
+[**Return to top**][]
+
+### Built-in Redis backend
+
+This fork ships an `ioredis`-based backend at `lib/redis-store.cjs`. It persists routes in a Redis hash so they survive proxy restarts. Prefix lookups stay fast because the in-memory `URLTrie` is hydrated from Redis on startup and updated locally on writes.
+
+```bash
+REDIS_URL=redis://redis.svc.cluster.local:6379 \
+configurable-http-proxy --storage-backend ./lib/redis-store.cjs
+```
+
+Configuration:
+
+| Option           | Env var            | Default                                 |
+| ---------------- | ------------------ | --------------------------------------- |
+| `redisUrl`       | `REDIS_URL`        | `redis://localhost:6379`                |
+| `redisKeyPrefix` | `REDIS_KEY_PREFIX` | `chp`                                   |
+| `redisOptions`   | —                  | passed through to `ioredis` constructor |
+
+Routes are stored in a single Redis hash at `<keyPrefix>:routes`, with each field being the cleaned route path and each value the JSON-serialized route data.
+
+**Single-proxy assumption:** writes update the local trie directly. If multiple proxy instances share the same Redis backend, route changes from other instances are not reflected until a reconnect or restart triggers re-hydration. Multi-instance synchronization (Redis Pub/Sub or keyspace notifications) is tracked as follow-up work.
+
+**Failure behavior:** if Redis is unavailable, route lookups and mutations reject. The `ioredis` client reconnects automatically; once `ready` fires again the local trie is re-hydrated.
 
 [**Return to top**][]
 
