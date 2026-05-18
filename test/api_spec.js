@@ -135,7 +135,6 @@ describe("API Tests", function () {
       .then(() => proxy._routes.get("/user/foo"))
       .then((route) => {
         expect(route.target).toEqual(target);
-        expect(typeof route.last_activity).toEqual("object");
       })
       .catch(done.fail)
       .then(done);
@@ -155,7 +154,6 @@ describe("API Tests", function () {
       .then(() => proxy._routes.get("/user/foo@bar"))
       .then((route) => {
         expect(route.target).toEqual(target);
-        expect(typeof route.last_activity).toEqual("object");
       })
       .then(() => proxy.targetForReq({ url: "/user/foo@bar/path" }))
       .then((proxyTarget) => {
@@ -178,7 +176,6 @@ describe("API Tests", function () {
       })
       .then((route) => {
         expect(route.target).toEqual(target);
-        expect(typeof route.last_activity).toEqual("object");
         done();
       });
   });

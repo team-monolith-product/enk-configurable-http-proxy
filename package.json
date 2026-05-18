@@ -9,6 +9,7 @@
     "url": "https://github.com/jupyterhub/configurable-http-proxy.git"
   },
   "dependencies": {
+    "@valkey/valkey-glide": "^2.3.1",
     "commander": "~14.0.3",
     "http-proxy-3": "~1.23.1",
     "prom-client": "~15.1.3",

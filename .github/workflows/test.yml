@@ -51,6 +51,11 @@ jobs:
 
   test:
     runs-on: ubuntu-24.04
+    services:
+      valkey:
+        image: valkey/valkey:8
+        ports:
+          - 6379:6379
     strategy:
       fail-fast: false # Do not cancel all jobs if one fails
       matrix:
@@ -90,6 +95,8 @@ jobs:
           npm ci
 
       - name: "Run tests"
+        env:
+          VALKEY_URL: redis://localhost:6379
         run: |
           npm test
 
