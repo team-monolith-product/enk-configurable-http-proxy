@@ -51,6 +51,10 @@ jobs:
 
   test:
     runs-on: ubuntu-24.04
+    # 'current'는 forward-compat canary. c8 v11/Node 26 ESM 호환성 이슈로
+    # 현재 실패하지만 운영 컨테이너 (Node 24) 와 무관. 신호 유지 목적으로 매트릭스에
+    # 두되 실패해도 워크플로우 통과시킨다. (INF-202)
+    continue-on-error: ${{ matrix.node_version == 'current' }}
     services:
       valkey:
         image: valkey/valkey:8
@@ -66,11 +70,10 @@ jobs:
           # ubuntu 24.04: 18
           # debian 13: 20
           # 20 LTS EOL: 2026-06
-          # 'current'은 c8 v11/Node 26 ESM 호환성 이슈로 제외.
-          # 운영 컨테이너는 LTS 만 사용하므로 영향 없음. (INF-202)
           - "20"
           - "22"
           - "24"
+          - current
 
     steps:
       - uses: actions/checkout@v6
