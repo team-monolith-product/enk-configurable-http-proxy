@@ -128,6 +128,11 @@ cli
   .option(
     "--anthropic-api-url <url>",
     "Target Anthropic API base URL (default: https://api.anthropic.com)",
+  )
+  .option("--gemini-proxy-path <path>", "URL prefix for Gemini API proxy (e.g., /gemini). Disabled if not set.")
+  .option(
+    "--gemini-api-url <url>",
+    "Target Gemini API base URL (default: https://generativelanguage.googleapis.com)",
   );
 
 // collects multiple flags to an object
@@ -339,6 +344,11 @@ options.servePort = args.servePort || 3000;
 options.anthropicProxyPath = args.anthropicProxyPath;
 options.anthropicApiUrl = args.anthropicApiUrl || "https://api.anthropic.com";
 options.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+
+// gemini proxy routing
+options.geminiProxyPath = args.geminiProxyPath;
+options.geminiApiUrl = args.geminiApiUrl || "https://generativelanguage.googleapis.com";
+options.geminiApiKey = process.env.GEMINI_API_KEY;
 
 // external backend class
 options.storageBackend = args.storageBackend;
