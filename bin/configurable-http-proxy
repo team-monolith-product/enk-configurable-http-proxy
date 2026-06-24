@@ -133,6 +133,11 @@ cli
   .option(
     "--gemini-api-url <url>",
     "Target Gemini API base URL (default: https://generativelanguage.googleapis.com)",
+  )
+  .option("--deepseek-proxy-path <path>", "URL prefix for DeepSeek API proxy (e.g., /deepseek). Disabled if not set.")
+  .option(
+    "--deepseek-api-url <url>",
+    "Target DeepSeek Anthropic-compatible API base URL (default: https://api.deepseek.com/anthropic)",
   );
 
 // collects multiple flags to an object
@@ -349,6 +354,11 @@ options.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 options.geminiProxyPath = args.geminiProxyPath;
 options.geminiApiUrl = args.geminiApiUrl || "https://generativelanguage.googleapis.com";
 options.geminiApiKey = process.env.GEMINI_API_KEY;
+
+// deepseek proxy routing (DeepSeek Anthropic-compatible endpoint)
+options.deepseekProxyPath = args.deepseekProxyPath;
+options.deepseekApiUrl = args.deepseekApiUrl || "https://api.deepseek.com/anthropic";
+options.deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 
 // external backend class
 options.storageBackend = args.storageBackend;
