@@ -138,6 +138,11 @@ cli
   .option(
     "--deepseek-api-url <url>",
     "Target DeepSeek Anthropic-compatible API base URL (default: https://api.deepseek.com/anthropic)",
+  )
+  .option("--minimax-proxy-path <path>", "URL prefix for MiniMax API proxy (e.g., /minimax). Disabled if not set.")
+  .option(
+    "--minimax-api-url <url>",
+    "Target MiniMax Anthropic-compatible API base URL (default: https://api.minimax.io/anthropic)",
   );
 
 // collects multiple flags to an object
@@ -359,6 +364,11 @@ options.geminiApiKey = process.env.GEMINI_API_KEY;
 options.deepseekProxyPath = args.deepseekProxyPath;
 options.deepseekApiUrl = args.deepseekApiUrl || "https://api.deepseek.com/anthropic";
 options.deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+
+// minimax proxy routing (MiniMax Anthropic-compatible endpoint)
+options.minimaxProxyPath = args.minimaxProxyPath;
+options.minimaxApiUrl = args.minimaxApiUrl || "https://api.minimax.io/anthropic";
+options.minimaxApiKey = process.env.MINIMAX_API_KEY;
 
 // external backend class
 options.storageBackend = args.storageBackend;
