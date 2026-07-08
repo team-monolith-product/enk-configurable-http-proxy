@@ -115,6 +115,53 @@ describe("Serve Domain Routing", function () {
       });
   });
 
+  it("routes {username}-tutorial subdomain to the tutorial serve port", function (done) {
+    var tutorialPort = servePort + 1;
+    var serveServer;
+    setupServeProxy({ tutorialServePort: tutorialPort })
+      .then(function (proxy) {
+        return startServeServer(tutorialPort).then(function (server) {
+          serveServer = server;
+          return proxy.addRoute("/user/alice", {
+            target: "http://127.0.0.1:" + (port + 2),
+          });
+        });
+      })
+      .then(function () {
+        return fetch(proxyUrl + "/index.html", {
+          headers: { Host: "alice-tutorial." + serveDomain },
+        });
+      })
+      .then(function (res) {
+        expect(res.status).toEqual(200);
+        return res.json();
+      })
+      .then(function (body) {
+        expect(body.served).toBe(true);
+        expect(body.url).toEqual("/index.html");
+        serveServer.close();
+        done();
+      });
+  });
+
+  it("does not treat a bare -tutorial label as a user route", function (done) {
+    setupServeProxy({ tutorialServePort: servePort + 1 })
+      .then(function (proxy) {
+        return proxy.addRoute("/user/alice", {
+          target: "http://127.0.0.1:" + (port + 2),
+        });
+      })
+      .then(function () {
+        return fetch(proxyUrl + "/", {
+          headers: { Host: "-tutorial." + serveDomain },
+        });
+      })
+      .then(function (res) {
+        expect(res.status).toEqual(404);
+        done();
+      });
+  });
+
   it("handles root path correctly", function (done) {
     var serveServer;
     setupServeProxy()

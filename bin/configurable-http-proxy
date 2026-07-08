@@ -124,6 +124,11 @@ cli
     "Target port for serve routing (default: 3000)",
     parseInt
   )
+  .option(
+    "--serve-tutorial-port <n>",
+    "Target port for {username}-tutorial subdomain serve routing (default: 3001)",
+    parseInt
+  )
   .option("--anthropic-proxy-path <path>", "URL prefix for Anthropic API proxy (e.g., /anthropic). Disabled if not set.")
   .option(
     "--anthropic-api-url <url>",
@@ -349,6 +354,7 @@ if (!options.authToken) {
 // serve domain routing
 options.serveDomain = args.serveDomain || process.env.OPENCODE_SERVE_DOMAIN;
 options.servePort = args.servePort || 3000;
+options.tutorialServePort = args.serveTutorialPort || 3001;
 
 // anthropic proxy routing
 options.anthropicProxyPath = args.anthropicProxyPath;
