@@ -2,6 +2,7 @@ import http from "node:http";
 import fetch from "node-fetch";
 
 import { ConfigurableProxy, parseListenOptions } from "../lib/configproxy.js";
+import { sentry } from "../lib/sentry.js";
 import * as util from "../lib/testutil.js";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
@@ -223,6 +224,84 @@ describe("Anthropic API Proxy", function () {
               done();
             });
           });
+        });
+      });
+    });
+  });
+
+  it("captures upstream 5xx responses to sentry", function (done) {
+    spyOn(sentry, "captureApiProxyResponse");
+    anthropicServer = http.createServer(function (req, res) {
+      req.on("data", function () {});
+      req.on("end", function () {
+        res.writeHead(529, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ type: "error", error: { type: "overloaded_error" } }));
+      });
+    });
+
+    anthropicServer.listen(anthropicPort, "127.0.0.1", function () {
+      setupAnthropicProxy().then(function (proxy) {
+        registerUserRoute(proxy).then(function () {
+          fetch(proxyUrl + "/anthropic/v1/messages?stream=true", {
+            method: "POST",
+            headers: { "x-api-key": "dummy" },
+          }).then(function (res) {
+            expect(res.status).toEqual(529);
+            expect(sentry.captureApiProxyResponse).toHaveBeenCalledWith(
+              "Anthropic",
+              529,
+              "POST",
+              "/v1/messages"
+            );
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it("does not capture upstream 4xx responses to sentry", function (done) {
+    spyOn(sentry, "captureApiProxyResponse");
+    anthropicServer = http.createServer(function (req, res) {
+      req.on("data", function () {});
+      req.on("end", function () {
+        res.writeHead(429, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ type: "error", error: { type: "rate_limit_error" } }));
+      });
+    });
+
+    anthropicServer.listen(anthropicPort, "127.0.0.1", function () {
+      setupAnthropicProxy().then(function (proxy) {
+        registerUserRoute(proxy).then(function () {
+          fetch(proxyUrl + "/anthropic/v1/messages", {
+            method: "POST",
+            headers: { "x-api-key": "dummy" },
+          }).then(function (res) {
+            expect(res.status).toEqual(429);
+            expect(sentry.captureApiProxyResponse).not.toHaveBeenCalled();
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it("captures upstream connection failures to sentry", function (done) {
+    spyOn(sentry, "captureApiProxyError");
+    setupAnthropicProxy().then(function (proxy) {
+      registerUserRoute(proxy).then(function () {
+        fetch(proxyUrl + "/anthropic/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": "dummy" },
+        }).then(function (res) {
+          expect(res.status).toEqual(502);
+          expect(sentry.captureApiProxyError).toHaveBeenCalledWith(
+            "Anthropic",
+            jasmine.any(Error),
+            "POST",
+            "/v1/messages"
+          );
+          done();
         });
       });
     });
