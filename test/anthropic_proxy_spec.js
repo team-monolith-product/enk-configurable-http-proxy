@@ -305,7 +305,7 @@ describe("Anthropic API Proxy", function () {
     });
   });
 
-  it("does not capture upstream 4xx responses to sentry", function (done) {
+  it("captures upstream 4xx responses to sentry", function (done) {
     spyOn(sentry, "captureApiProxyResponse");
     anthropicServer = http.createServer(function (req, res) {
       req.on("data", function () {});
@@ -321,11 +321,22 @@ describe("Anthropic API Proxy", function () {
           fetch(proxyUrl + "/anthropic/v1/messages", {
             method: "POST",
             headers: { "x-api-key": "dummy" },
-          }).then(function (res) {
-            expect(res.status).toEqual(429);
-            expect(sentry.captureApiProxyResponse).not.toHaveBeenCalled();
-            done();
-          });
+          })
+            .then(function (res) {
+              expect(res.status).toEqual(429);
+              return res.json();
+            })
+            .then(function (body) {
+              expect(body.error.type).toEqual("rate_limit_error");
+              expect(sentry.captureApiProxyResponse).toHaveBeenCalledWith(
+                "Anthropic",
+                429,
+                "POST",
+                "/v1/messages",
+                jasmine.stringContaining("rate_limit_error")
+              );
+              done();
+            });
         });
       });
     });
