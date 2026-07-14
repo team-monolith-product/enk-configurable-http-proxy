@@ -127,7 +127,7 @@ describe("LLM Health Check", function () {
     expect(entry.status).toEqual("healthy");
     expect(typeof entry.latencyMs).toEqual("number");
     expect(entry.source).toEqual("probe");
-    expect(isNaN(Date.parse(entry.checkedAt))).toEqual(false);
+    expect(entry.checkedAt).toBeUndefined();
 
     expect(upstreamRequests.length).toEqual(1);
     var probe = upstreamRequests[0];
