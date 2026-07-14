@@ -1,6 +1,7 @@
 import http from "node:http";
 import fetch from "node-fetch";
 
+import { retryAfterMs } from "../lib/llm_health_check.js";
 import * as util from "../lib/testutil.js";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
@@ -123,11 +124,7 @@ describe("LLM Health Check", function () {
     var res = await getHealth();
     expect(res.status).toEqual(200);
     var body = await res.json();
-    var entry = body.models["anthropic/claude-test"];
-    expect(entry.status).toEqual("healthy");
-    expect(typeof entry.latencyMs).toEqual("number");
-    expect(entry.source).toEqual("probe");
-    expect(entry.checkedAt).toBeUndefined();
+    expect(body.models["anthropic/claude-test"]).toEqual({ status: "healthy" });
 
     expect(upstreamRequests.length).toEqual(1);
     var probe = upstreamRequests[0];
@@ -188,9 +185,7 @@ describe("LLM Health Check", function () {
     await registerUserRoute(proxy);
 
     var body = await (await getHealth()).json();
-    var entry = body.models["anthropic/claude-test"];
-    expect(entry.status).toEqual("unhealthy");
-    expect(entry.error).toContain("500");
+    expect(body.models["anthropic/claude-test"]).toEqual({ status: "unhealthy" });
   });
 
   it("reports unhealthy on probe timeout", async function () {
@@ -204,9 +199,7 @@ describe("LLM Health Check", function () {
     await registerUserRoute(proxy);
 
     var body = await (await getHealth()).json();
-    var entry = body.models["anthropic/claude-test"];
-    expect(entry.status).toEqual("unhealthy");
-    expect(entry.error).toContain("timeout");
+    expect(body.models["anthropic/claude-test"]).toEqual({ status: "unhealthy" });
   });
 
   it("reports rate_limited on 429 and skips probing until expiry", async function () {
@@ -218,31 +211,13 @@ describe("LLM Health Check", function () {
     await registerUserRoute(proxy);
 
     var body = await (await getHealth()).json();
-    var entry = body.models["anthropic/claude-test"];
-    expect(entry.status).toEqual("rate_limited");
-    var untilMs = Date.parse(entry.rateLimitedUntil) - Date.now();
-    expect(untilMs).toBeGreaterThan(55000);
-    expect(untilMs).toBeLessThan(65000);
+    expect(body.models["anthropic/claude-test"].status).toEqual("rate_limited");
 
     // rate_limited 유지 중에는 TTL 이 지나도 프로브하지 않는다
     await sleep(200);
     body = await (await getHealth()).json();
     expect(body.models["anthropic/claude-test"].status).toEqual("rate_limited");
     expect(upstreamRequests.length).toEqual(1);
-  });
-
-  it("prefers retry-after-ms over retry-after", async function () {
-    upstreamHandler = function (req, res) {
-      res.writeHead(429, { "retry-after-ms": "1500", "retry-after": "60" });
-      res.end("{}");
-    };
-    var proxy = await setupHealthProxy();
-    await registerUserRoute(proxy);
-
-    var body = await (await getHealth()).json();
-    var untilMs = Date.parse(body.models["anthropic/claude-test"].rateLimitedUntil) - Date.now();
-    expect(untilMs).toBeGreaterThan(0);
-    expect(untilMs).toBeLessThan(3000);
   });
 
   it("uses rate limit ttl without retry-after and re-probes after expiry", async function () {
@@ -311,9 +286,7 @@ describe("LLM Health Check", function () {
     await sleep(100);
 
     var body = await (await getHealth()).json();
-    var entry = body.models["anthropic/claude-test"];
-    expect(entry.status).toEqual("rate_limited");
-    expect(entry.source).toEqual("traffic");
+    expect(body.models["anthropic/claude-test"].status).toEqual("rate_limited");
     expect(upstreamRequests.length).toEqual(1);
   });
 
@@ -331,9 +304,7 @@ describe("LLM Health Check", function () {
     await sleep(100);
     proxy.llmHealth.noteTrafficRateLimit("anthropic", { "retry-after": "60" });
     var body = await (await pending).json();
-    var entry = body.models["anthropic/claude-test"];
-    expect(entry.status).toEqual("rate_limited");
-    expect(entry.source).toEqual("traffic");
+    expect(body.models["anthropic/claude-test"].status).toEqual("rate_limited");
   });
 
   it("returns unknown when another replica holds the probe lock and no state exists", async function () {
@@ -370,5 +341,16 @@ describe("LLM Health Check", function () {
     expect(geminiProbe.headers["x-goog-api-key"]).toEqual("real-gemini-key");
     var geminiBody = JSON.parse(geminiProbe.body);
     expect(geminiBody.generationConfig.maxOutputTokens).toEqual(1);
+  });
+});
+
+describe("LLM Health Check retry-after", function () {
+  it("resolves rate limit duration with opencode retry-after priority", function () {
+    expect(retryAfterMs({ "retry-after-ms": "1500", "retry-after": "60" }, 60000)).toEqual(1500);
+    expect(retryAfterMs({ "retry-after": "2.5" }, 60000)).toEqual(2500);
+    var untilMs = retryAfterMs({ "retry-after": new Date(Date.now() + 5000).toUTCString() }, 60000);
+    expect(untilMs).toBeGreaterThan(0);
+    expect(untilMs).toBeLessThanOrEqual(5000);
+    expect(retryAfterMs({}, 60000)).toEqual(60000);
   });
 });
