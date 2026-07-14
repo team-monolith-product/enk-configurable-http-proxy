@@ -148,7 +148,26 @@ cli
   .option(
     "--minimax-api-url <url>",
     "Target MiniMax Anthropic-compatible API base URL (default: https://api.minimax.io/anthropic)",
-  );
+  )
+  .option(
+    "--llm-health-ttl <n>",
+    "Freshness TTL (in millis) of LLM provider health state served at /llm_health_check (default: 30000)",
+    parseInt
+  )
+  .option(
+    "--llm-health-probe-timeout <n>",
+    "Timeout (in millis) for LLM provider health probe requests (default: 10000)",
+    parseInt
+  )
+  .option(
+    "--llm-health-rate-limit-ttl <n>",
+    "How long (in millis) a provider stays rate_limited when no retry-after header is given (default: 60000)",
+    parseInt
+  )
+  .option("--anthropic-probe-model <model>", "Model for Anthropic health probes (default: claude-haiku-4-5)")
+  .option("--gemini-probe-model <model>", "Model for Gemini health probes (default: gemini-3.5-flash)")
+  .option("--deepseek-probe-model <model>", "Model for DeepSeek health probes (default: deepseek-v4-pro)")
+  .option("--minimax-probe-model <model>", "Model for MiniMax health probes (default: MiniMax-M3)");
 
 // collects multiple flags to an object
 // --custom-header "k1:v1" --custom-header " k2 : v2 " --> {"k1":"v1","k2":"v2"}
@@ -375,6 +394,15 @@ options.deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 options.minimaxProxyPath = args.minimaxProxyPath;
 options.minimaxApiUrl = args.minimaxApiUrl || "https://api.minimax.io/anthropic";
 options.minimaxApiKey = process.env.MINIMAX_API_KEY;
+
+// llm provider health check (/llm_health_check)
+options.llmHealthTtl = args.llmHealthTtl;
+options.llmHealthProbeTimeout = args.llmHealthProbeTimeout;
+options.llmHealthRateLimitTtl = args.llmHealthRateLimitTtl;
+options.anthropicProbeModel = args.anthropicProbeModel;
+options.geminiProbeModel = args.geminiProbeModel;
+options.deepseekProbeModel = args.deepseekProbeModel;
+options.minimaxProbeModel = args.minimaxProbeModel;
 
 // external backend class
 options.storageBackend = args.storageBackend;
