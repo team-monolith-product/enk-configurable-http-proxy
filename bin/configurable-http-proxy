@@ -148,6 +148,11 @@ cli
   .option(
     "--minimax-api-url <url>",
     "Target MiniMax Anthropic-compatible API base URL (default: https://api.minimax.io/anthropic)",
+  )
+  .option("--kimi-proxy-path <path>", "URL prefix for Kimi API proxy (e.g., /kimi). Disabled if not set.")
+  .option(
+    "--kimi-api-url <url>",
+    "Target Kimi (Moonshot) Anthropic-compatible API base URL (default: https://api.moonshot.ai/anthropic)",
   );
 
 // collects multiple flags to an object
@@ -375,6 +380,11 @@ options.deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 options.minimaxProxyPath = args.minimaxProxyPath;
 options.minimaxApiUrl = args.minimaxApiUrl || "https://api.minimax.io/anthropic";
 options.minimaxApiKey = process.env.MINIMAX_API_KEY;
+
+// kimi proxy routing (Kimi/Moonshot Anthropic-compatible endpoint)
+options.kimiProxyPath = args.kimiProxyPath;
+options.kimiApiUrl = args.kimiApiUrl || "https://api.moonshot.ai/anthropic";
+options.kimiApiKey = process.env.KIMI_API_KEY;
 
 // external backend class
 options.storageBackend = args.storageBackend;
