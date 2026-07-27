@@ -35,6 +35,7 @@ describe("Kimi API Proxy", function () {
               url: req.url,
               method: req.method,
               apiKey: req.headers["x-api-key"],
+              headers: req.headers,
             })
           );
           res.end();
@@ -111,6 +112,31 @@ describe("Kimi API Proxy", function () {
             .then(function (body) {
               expect(body.apiKey).toEqual("real-kimi-key");
               expect(body.url).toEqual("/v1/messages");
+              done();
+            });
+        });
+      });
+    });
+  });
+
+  it("does not forward x-forwarded-* headers to the upstream API", function (done) {
+    // Moonshot 은 빈 x-forwarded-host 를 Host 로 채택해 400 을 반환하므로 x-forwarded-* 를 보내면 안 된다.
+    startMockKimiApi().then(function () {
+      setupKimiProxy().then(function (proxy) {
+        registerUserRoute(proxy).then(function () {
+          fetch(proxyUrl + "/kimi/v1/messages", {
+            method: "POST",
+            headers: { "x-api-key": "dummy", "x-forwarded-host": "proxy-public" },
+          })
+            .then(function (res) {
+              return res.json();
+            })
+            .then(function (body) {
+              var forwarded = Object.keys(body.headers).filter(function (name) {
+                return name.startsWith("x-forwarded-");
+              });
+              expect(forwarded).toEqual([]);
+              expect(body.headers["host"]).toEqual("127.0.0.1:" + kimiPort);
               done();
             });
         });
