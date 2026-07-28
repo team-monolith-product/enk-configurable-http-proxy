@@ -148,6 +148,11 @@ cli
   .option(
     "--minimax-api-url <url>",
     "Target MiniMax Anthropic-compatible API base URL (default: https://api.minimax.io/anthropic)",
+  )
+  .option("--upstage-proxy-path <path>", "URL prefix for Upstage API proxy (e.g., /upstage). Disabled if not set.")
+  .option(
+    "--upstage-api-url <url>",
+    "Target Upstage OpenAI-compatible API base URL (default: https://api.upstage.ai)",
   );
 
 // collects multiple flags to an object
@@ -375,6 +380,11 @@ options.deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 options.minimaxProxyPath = args.minimaxProxyPath;
 options.minimaxApiUrl = args.minimaxApiUrl || "https://api.minimax.io/anthropic";
 options.minimaxApiKey = process.env.MINIMAX_API_KEY;
+
+// upstage proxy routing (Upstage OpenAI-compatible endpoint)
+options.upstageProxyPath = args.upstageProxyPath;
+options.upstageApiUrl = args.upstageApiUrl || "https://api.upstage.ai";
+options.upstageApiKey = process.env.UPSTAGE_API_KEY;
 
 // external backend class
 options.storageBackend = args.storageBackend;
