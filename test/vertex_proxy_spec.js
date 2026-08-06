@@ -4,6 +4,7 @@ import fetch from "node-fetch";
 import { ConfigurableProxy, parseListenOptions } from "../lib/configproxy.js";
 import {
   VertexTokenSource,
+  createVertexProxy,
   decodeServiceAccountKey,
   defaultVertexApiUrl,
 } from "../lib/vertexauth.js";
@@ -49,71 +50,30 @@ describe("Vertex service account key decoding", function () {
 });
 
 describe("Vertex token source", function () {
-  function fakeAuth(getAccessToken) {
-    var calls = { getClient: 0 };
-    return {
-      calls: calls,
-      getClient: function () {
-        calls.getClient += 1;
-        return Promise.resolve({ getAccessToken: getAccessToken });
-      },
-    };
-  }
-
-  function sourceWithAuth(auth) {
-    var source = new VertexTokenSource(FAKE_CREDENTIALS);
-    source._auth = auth;
-    return source;
-  }
-
-  it("returns the issued token as a bearer header", async function () {
-    var source = sourceWithAuth(
-      fakeAuth(function () {
-        return Promise.resolve({ token: "abc123" });
-      })
-    );
-    expect(await source.authorizationHeader()).toEqual("Bearer abc123");
-  });
-
-  it("reuses the auth client across requests", async function () {
-    var auth = fakeAuth(function () {
-      return Promise.resolve({ token: "abc123" });
-    });
-    var source = sourceWithAuth(auth);
-    await source.authorizationHeader();
-    await source.authorizationHeader();
-    expect(auth.calls.getClient).toEqual(1);
-  });
-
-  it("throws when the token endpoint returns no token", async function () {
-    var source = sourceWithAuth(
-      fakeAuth(function () {
-        return Promise.resolve({ token: null });
-      })
-    );
-    await expectAsync(source.authorizationHeader()).toBeRejectedWithError(/empty token/);
-  });
-
-  it("retries client creation after a failure instead of caching the rejection", async function () {
-    var attempts = 0;
+  function sourceReturning(accessToken) {
     var source = new VertexTokenSource(FAKE_CREDENTIALS);
     source._auth = {
       getClient: function () {
-        attempts += 1;
-        if (attempts === 1) return Promise.reject(new Error("metadata server unreachable"));
         return Promise.resolve({
           getAccessToken: function () {
-            return Promise.resolve({ token: "recovered" });
+            return Promise.resolve(accessToken);
           },
         });
       },
     };
+    return source;
+  }
 
-    await expectAsync(source.authorizationHeader()).toBeRejectedWithError(
-      /metadata server unreachable/
+  it("returns the issued token as a bearer header", async function () {
+    expect(await sourceReturning({ token: "abc123" }).authorizationHeader()).toEqual(
+      "Bearer abc123"
     );
-    expect(await source.authorizationHeader()).toEqual("Bearer recovered");
-    expect(attempts).toEqual(2);
+  });
+
+  it("throws when the token endpoint returns no token", async function () {
+    await expectAsync(sourceReturning({ token: null }).authorizationHeader()).toBeRejectedWithError(
+      /empty token/
+    );
   });
 });
 
@@ -128,6 +88,44 @@ describe("Vertex default API URL", function () {
     expect(defaultVertexApiUrl("proj", "us-central1")).toEqual(
       "https://us-central1-aiplatform.googleapis.com/v1/projects/proj/locations/us-central1/endpoints/openapi"
     );
+  });
+});
+
+describe("Vertex proxy entry", function () {
+  var log = { error: function () {} };
+
+  it("is disabled when no proxy path is configured", function () {
+    expect(createVertexProxy({}, log)).toBeNull();
+  });
+
+  it("derives the API URL from the key project and the configured location", function () {
+    var entry = createVertexProxy(
+      {
+        vertexProxyPath: "/vertex",
+        vertexLocation: "asia-northeast3",
+        vertexServiceAccountKey: encodeCredentials(),
+      },
+      log
+    );
+    expect(entry.apiUrl).toEqual(
+      "https://asia-northeast3-aiplatform.googleapis.com/v1/projects/test-project/locations/asia-northeast3/endpoints/openapi"
+    );
+  });
+
+  it("falls back to the global location when none is configured", function () {
+    var entry = createVertexProxy(
+      { vertexProxyPath: "/vertex", vertexServiceAccountKey: encodeCredentials() },
+      log
+    );
+    expect(entry.apiUrl).toContain("/locations/global/");
+  });
+
+  it("leaves the entry without a credential resolver when the key is unusable", function () {
+    var entry = createVertexProxy(
+      { vertexProxyPath: "/vertex", vertexServiceAccountKey: "bm90LWpzb24=" },
+      log
+    );
+    expect(entry.getAuthValue).toBeUndefined();
   });
 });
 

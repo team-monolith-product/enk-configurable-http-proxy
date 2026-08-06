@@ -387,10 +387,10 @@ options.minimaxApiKey = process.env.MINIMAX_API_KEY;
 
 // vertex proxy routing (Vertex AI OpenAI-compatible endpoint)
 // 다른 provider 와 달리 정적 키가 아니라 base64 로 인코딩된 서비스 계정 키를 받는다.
-// 기본 apiUrl 은 키 안의 project_id 와 location 으로 만들기 때문에 여기서는 비워 둔다.
+// 기본 apiUrl 과 기본 location 은 키 안의 project_id 가 있어야 정해지므로 createVertexProxy 가 맡는다.
 options.vertexProxyPath = args.vertexProxyPath;
 options.vertexApiUrl = args.vertexApiUrl;
-options.vertexLocation = args.vertexLocation || "global";
+options.vertexLocation = args.vertexLocation;
 options.vertexServiceAccountKey = process.env.VERTEX_SA_KEY;
 
 // external backend class
