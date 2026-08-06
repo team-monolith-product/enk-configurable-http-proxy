@@ -148,6 +148,15 @@ cli
   .option(
     "--minimax-api-url <url>",
     "Target MiniMax Anthropic-compatible API base URL (default: https://api.minimax.io/anthropic)",
+  )
+  .option("--vertex-proxy-path <path>", "URL prefix for Vertex AI proxy (e.g., /vertex). Disabled if not set.")
+  .option(
+    "--vertex-api-url <url>",
+    "Target Vertex AI OpenAI-compatible API base URL (default: derived from the service account project and --vertex-location)",
+  )
+  .option(
+    "--vertex-location <location>",
+    "Vertex AI location used to derive the default API URL (default: global)",
   );
 
 // collects multiple flags to an object
@@ -375,6 +384,14 @@ options.deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 options.minimaxProxyPath = args.minimaxProxyPath;
 options.minimaxApiUrl = args.minimaxApiUrl || "https://api.minimax.io/anthropic";
 options.minimaxApiKey = process.env.MINIMAX_API_KEY;
+
+// vertex proxy routing (Vertex AI OpenAI-compatible endpoint)
+// 다른 provider 와 달리 정적 키가 아니라 base64 로 인코딩된 서비스 계정 키를 받는다.
+// 기본 apiUrl 과 기본 location 은 키 안의 project_id 가 있어야 정해지므로 createVertexProxy 가 맡는다.
+options.vertexProxyPath = args.vertexProxyPath;
+options.vertexApiUrl = args.vertexApiUrl;
+options.vertexLocation = args.vertexLocation;
+options.vertexServiceAccountKey = process.env.VERTEX_SA_KEY;
 
 // external backend class
 options.storageBackend = args.storageBackend;
