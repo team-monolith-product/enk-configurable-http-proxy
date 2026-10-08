@@ -25,4 +25,4 @@ jobs:
           }
         }
     secrets:
-      MACHINE_TOKEN: ${{ secrets.MACHINE_TOKEN }}
+      AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
