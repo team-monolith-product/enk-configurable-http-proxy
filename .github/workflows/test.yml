@@ -66,7 +66,7 @@ jobs:
           # ubuntu 24.04: 18
           # debian 13: 20
           # 20 LTS EOL: 2026-06
-          # 운영 컨테이너 (Dockerfile node:24-alpine3.23) 와 무관한 forward-compat
+          # 운영 컨테이너 (Dockerfile) 와 무관한 forward-compat
           # canary 'current' 는 c8 v11/Node 26 ESM 호환 이슈로 깨져 제외. (INF-202)
           - "20"
           - "22"
